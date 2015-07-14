@@ -5,17 +5,12 @@ Created on 11.07.2015
 @author: Matthew Rocklin
 '''
 
-from __future__ import division
+from __future__ import division, print_function
 import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
-import dask
 from sklearn.svm import SVC
 from sklearn import cross_validation
-from dask.compose import do, value
-from dask.async import get_sync
+from dask.compose import do
 
-@do
 def train_test(reg_param, train_idx, test_idx, X, y):
     svm = SVC(C=reg_param)
     svm.fit(X[train_idx, :], y[train_idx])
@@ -29,7 +24,7 @@ reg_params = np.logspace(-2, 2, 5)
 n_folds = 4
 
 kf_test = cross_validation.KFold(n, n_folds=n_folds)
-score_params = list()
+score_params = []
 test_scores = []
 
 for model_sel_idx, test_idx in kf_test:
@@ -38,14 +33,14 @@ for model_sel_idx, test_idx in kf_test:
 
     for reg_param in reg_params:
         kf = cross_validation.KFold(len(model_sel_idx), n_folds=n_folds)
-        scores = [train_test(reg_param, train_idx, val_idx, X_train, y_train)
+        scores = [do(train_test)(reg_param, train_idx, val_idx, X_train, y_train)
                   for train_idx, val_idx in kf]
         score = do(sum)(scores) / n_folds
         score_params.append([score, reg_param])
-    best_param = do(max)(score_params)[1]
 
-    test_scores += [train_test(best_param, model_sel_idx, test_idx, X, y)]
+    best_param = do(max)(score_params)[1]
+    test_scores.append(do(train_test)(best_param, model_sel_idx, test_idx, X, y))
 
 test_score = do(sum)(test_scores) / n_folds
 
-print test_score.compute()
+print(test_score.compute())
