@@ -9,7 +9,7 @@ from __future__ import division, print_function
 import numpy as np
 from sklearn.svm import SVC
 from sklearn import cross_validation
-from dask.compose import do
+from dask import do
 
 def train_test(reg_param, train_idx, test_idx, X, y):
     svm = SVC(C=reg_param)
@@ -36,7 +36,7 @@ for model_sel_idx, test_idx in kf_test:
         scores = [do(train_test)(reg_param, train_idx, val_idx, X_train, y_train)
                   for train_idx, val_idx in kf]
         score = do(sum)(scores) / n_folds
-        score_params.append([score, reg_param])
+        score_params.append((score, reg_param))
 
     best_param = do(max)(score_params)[1]
     test_scores.append(do(train_test)(best_param, model_sel_idx, test_idx, X, y))
